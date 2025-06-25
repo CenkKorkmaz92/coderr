@@ -1,0 +1,55 @@
+# Python/Django
+__pycache__/
+*.py[cod]
+*.sqlite3
+*.log
+*.pot
+*.pyc
+*.pyo
+*.pyd
+*.db
+*.DS_Store
+*.egg-info/
+*.env
+.env
+venv/
+ENV/
+.env.*
+
+# VSCode
+.vscode/
+
+# System
+Thumbs.db
+.DS_Store
+
+# Media/Uploads
+media/
+profile_pictures/
+
+# Ignore everything except backend essentials
+# (Assuming this .gitignore is in the backend folder)
+!/requirements.txt
+!/README.md
+
+# If you want to keep migrations, comment out the next line
+# */migrations/
+
+# Ignore frontend folders if present in repo root
+/assets/
+/scripts/
+/styles/
+shared/
+*.html
+
+# Allow backend code
+!*/
+!*.py
+!manage.py
+!coderr_backend/
+!users/
+!offers/
+!orders/
+!reviews/
+!core/
+!tests/
