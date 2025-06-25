@@ -1,6 +1,8 @@
 # URLs for reviews app
 from django.urls import path
+from .views import ReviewListCreateView, ReviewRetrieveUpdateDestroyView
 
 urlpatterns = [
-    # Add review endpoints here
+    path('reviews/', ReviewListCreateView.as_view(), name='review-list-create'),
+    path('reviews/<int:pk>/', ReviewRetrieveUpdateDestroyView.as_view(), name='review-detail'),
 ]
