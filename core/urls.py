@@ -1,6 +1,7 @@
 # URLs for core app
 from django.urls import path
+from .views import BaseInfoView
 
 urlpatterns = [
-    # Add core endpoints here
+    path('base-info/', BaseInfoView.as_view(), name='base-info'),
 ]

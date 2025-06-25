@@ -23,5 +23,5 @@ urlpatterns = [
     path('api/', include('offers.urls')),
     path('api/', include('orders.urls')),
     path('api/', include('reviews.urls')),
-    # Add other app URLs here
+    path('api/', include('core.urls')),
 ]
