@@ -9,10 +9,11 @@ from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 from django.db import models
 from rest_framework import serializers
+from users.permissions import IsCustomerUser
 
 class OrderListCreateView(generics.ListCreateAPIView):
     serializer_class = OrderSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsCustomerUser]
 
     def get_queryset(self):
         user = self.request.user

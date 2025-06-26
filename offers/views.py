@@ -5,11 +5,12 @@ from .models import Offer, OfferDetail
 from .serializers import OfferSerializer, OfferDetailSerializer
 from rest_framework.permissions import IsAuthenticatedOrReadOnly
 from django_filters.rest_framework import DjangoFilterBackend
+from users.permissions import IsBusinessUser
 
 class OfferListCreateView(generics.ListCreateAPIView):
     queryset = Offer.objects.all().prefetch_related('details')
     serializer_class = OfferSerializer
-    permission_classes = [IsAuthenticatedOrReadOnly]
+    permission_classes = [IsAuthenticatedOrReadOnly, IsBusinessUser]
     filter_backends = [filters.SearchFilter, filters.OrderingFilter, DjangoFilterBackend]
     search_fields = ['title', 'description']
     ordering_fields = ['updated_at', 'min_price']
