@@ -2,6 +2,7 @@ from rest_framework import permissions
 
 class IsBusinessUser(permissions.BasePermission):
     """Allow only business users to create offers."""
+    message = "Only users with a business profile can create offers. You are currently a customer."
     def has_permission(self, request, view):
         if request.method == 'POST':
             return hasattr(request.user, 'profile') and getattr(request.user.profile, 'type', None) == 'business'
