@@ -5,13 +5,15 @@ from rest_framework import status
 from offers.models import Offer
 from reviews.models import Review
 from users.models import UserProfile
+from django.db.models import Avg
 
 # Create your views here.
 
 class BaseInfoView(APIView):
     def get(self, request):
         review_count = Review.objects.count()
-        average_rating = round(Review.objects.all().aggregate_avg('rating') or 0, 1)
+        average_rating = Review.objects.all().aggregate(Avg('rating'))['rating__avg'] or 0
+        average_rating = round(average_rating, 1)
         business_profile_count = UserProfile.objects.filter(type='business').count()
         offer_count = Offer.objects.count()
         return Response({
