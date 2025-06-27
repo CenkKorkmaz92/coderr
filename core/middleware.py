@@ -2,9 +2,14 @@ from django.utils.deprecation import MiddlewareMixin
 from rest_framework.authtoken.models import Token
 from django.http import JsonResponse
 from django.urls import resolve
+from django.views.decorators.csrf import csrf_exempt
 
 class StrictTokenAuthMiddleware(MiddlewareMixin):
     def process_request(self, request):
+        # Exempt all API endpoints from CSRF
+        if request.path.startswith('/api/'):
+            setattr(request, '_dont_enforce_csrf_checks', True)
+        
         # Allow unauthenticated access to login and registration endpoints
         allowed_paths = [
             '/api/login/',
