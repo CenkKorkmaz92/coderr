@@ -1,55 +1,91 @@
-# Python/Django
+# Python
 __pycache__/
 *.py[cod]
-*.sqlite3
-*.log
-*.pot
-*.pyc
-*.pyo
-*.pyd
-*.db
-*.DS_Store
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
 *.egg-info/
-*.env
+.installed.cfg
+*.egg
+
+# Django
+*.log
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+
+# Environment variables
 .env
+.env.*
 venv/
 ENV/
-.env.*
+env/
 
-# VSCode
-.vscode/
-
-# System
-Thumbs.db
-.DS_Store
-
-# Media/Uploads
+# Media files (uploaded content)
 media/
-profile_pictures/
+!media/.gitkeep
+!media/offer_images/.gitkeep
+!media/profile_pictures/.gitkeep
 
-# Ignore everything except backend essentials
-# (Assuming this .gitignore is in the backend folder)
-!/requirements.txt
-!/README.md
+# Static files (collected)
+staticfiles/
+static/
 
-# If you want to keep migrations, comment out the next line
-# */migrations/
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
 
-# Ignore frontend folders if present in repo root
-/assets/
-/scripts/
-/styles/
-shared/
-*.html
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
 
-# Allow backend code
-!*/
-!*.py
-!manage.py
-!coderr_backend/
-!users/
-!offers/
-!orders/
-!reviews/
-!core/
-!tests/
+# Test files and utility scripts (kept locally for development/debugging)
+test_*.py
+*test*.py
+*_test.py
+system_check.py
+cleanup_*.py
+test_*.jpg
+test_*.png
+*test*.jpg
+*test*.png
+
+# Documentation files (keep only README.md in repository)
+*_DOCUMENTATION.md
+CLEANUP_SUMMARY.md
+MENTOR_REVIEW_README.md
+IMAGE_UPLOAD_DOCUMENTATION.md
+
+# Coverage reports
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
+*.cover
+.hypothesis/
+.pytest_cache/
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
