@@ -1,7 +1,6 @@
 from django.shortcuts import render
 from rest_framework import generics, permissions, status, filters
 from rest_framework.response import Response
-from rest_framework.exceptions import PermissionDenied
 from .models import Review
 from .serializers import ReviewSerializer
 from rest_framework.permissions import IsAuthenticated
@@ -29,9 +28,9 @@ class ReviewListCreateView(generics.ListCreateAPIView):
         reviewer = self.request.user
         business_user = serializer.validated_data['business_user']
         if reviewer.profile.type != 'customer':
-            raise PermissionDenied('Only customers can create reviews.')
+            raise permissions.PermissionDenied('Only customers can create reviews.')
         if Review.objects.filter(business_user=business_user, reviewer=reviewer).exists():
-            raise PermissionDenied('You have already reviewed this business user.')
+            raise permissions.PermissionDenied('You have already reviewed this business user.')
         serializer.save(reviewer=reviewer)
 
 class ReviewRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):

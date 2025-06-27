@@ -6,10 +6,8 @@ from rest_framework.authtoken.models import Token
 from django.contrib.auth.models import User
 from .models import UserProfile
 from .serializers import RegistrationSerializer, LoginSerializer, UserProfileSerializer
-from rest_framework.generics import RetrieveUpdateAPIView, ListAPIView
+from rest_framework.generics import RetrieveUpdateAPIView
 from rest_framework.permissions import IsAuthenticated
-from django.http import Http404
-from users.permissions import IsProfileOwnerOrReadOnly
 
 class RegistrationView(APIView):
     def post(self, request):
@@ -42,37 +40,10 @@ class LoginView(APIView):
 class ProfileView(RetrieveUpdateAPIView):
     queryset = UserProfile.objects.select_related('user')
     serializer_class = UserProfileSerializer
-    permission_classes = [IsAuthenticated, IsProfileOwnerOrReadOnly]
+    permission_classes = [IsAuthenticated]
 
     def get_object(self):
         pk = self.kwargs['pk']
-        try:
-            return UserProfile.objects.get(user__pk=pk)
-        except UserProfile.DoesNotExist:
-            raise Http404
-
-    def update(self, request, *args, **kwargs):
-        instance = self.get_object()
-        self.check_object_permissions(request, instance)
-        return super().update(request, *args, **kwargs)
-
-    def partial_update(self, request, *args, **kwargs):
-        instance = self.get_object()
-        self.check_object_permissions(request, instance)
-        return super().partial_update(request, *args, **kwargs)
-
-class BusinessProfileListView(ListAPIView):
-    serializer_class = UserProfileSerializer
-    permission_classes = [IsAuthenticated]
-
-    def get_queryset(self):
-        return UserProfile.objects.filter(type='business')
-
-class CustomerProfileListView(ListAPIView):
-    serializer_class = UserProfileSerializer
-    permission_classes = [IsAuthenticated]
-
-    def get_queryset(self):
-        return UserProfile.objects.filter(type='customer')
+        return UserProfile.objects.get(user__pk=pk)
 
 # Create your views here.
