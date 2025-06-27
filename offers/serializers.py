@@ -11,15 +11,13 @@ class OfferDetailSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'title', 'revisions', 'delivery_time_in_days', 'price', 'features', 'offer_type', 'offer'
         ]
-        read_only_fields = ['id', 'offer']
+        read_only_fields = ['id']
 
 class OfferSerializer(serializers.ModelSerializer):
     details = OfferDetailSerializer(many=True)
     min_price = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
     min_delivery_time = serializers.IntegerField(read_only=True)
     user_details = serializers.SerializerMethodField()
-    image = serializers.ImageField(allow_null=True, required=False)
-    user = serializers.PrimaryKeyRelatedField(read_only=True)
 
     class Meta:
         model = Offer
@@ -65,10 +63,3 @@ class OfferSerializer(serializers.ModelSerializer):
                 else:
                     OfferDetail.objects.create(offer=instance, **detail_data)
         return instance
-
-    def to_internal_value(self, data):
-        # If image is None, remove it so DRF doesn't error
-        if 'image' in data and data['image'] is None:
-            data = data.copy()
-            data.pop('image')
-        return super().to_internal_value(data)

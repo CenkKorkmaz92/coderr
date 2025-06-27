@@ -5,12 +5,11 @@ from .models import Offer, OfferDetail
 from .serializers import OfferSerializer, OfferDetailSerializer
 from rest_framework.permissions import IsAuthenticatedOrReadOnly
 from django_filters.rest_framework import DjangoFilterBackend
-from users.permissions import IsBusinessUser
 
 class OfferListCreateView(generics.ListCreateAPIView):
     queryset = Offer.objects.all().prefetch_related('details')
     serializer_class = OfferSerializer
-    permission_classes = [IsAuthenticatedOrReadOnly, IsBusinessUser]
+    permission_classes = [IsAuthenticatedOrReadOnly]
     filter_backends = [filters.SearchFilter, filters.OrderingFilter, DjangoFilterBackend]
     search_fields = ['title', 'description']
     ordering_fields = ['updated_at', 'min_price']
@@ -31,3 +30,15 @@ class OfferDetailRetrieveView(generics.RetrieveAPIView):
     queryset = OfferDetail.objects.all()
     serializer_class = OfferDetailSerializer
     permission_classes = [permissions.AllowAny]
+
+class OfferDetailListCreateView(generics.ListCreateAPIView):
+    queryset = OfferDetail.objects.all()
+    serializer_class = OfferDetailSerializer
+    permission_classes = [IsAuthenticatedOrReadOnly]
+
+    def perform_create(self, serializer):
+        # Only the owner of the offer can create offer details
+        offer = serializer.validated_data['offer']
+        if offer.user != self.request.user:
+            raise permissions.PermissionDenied('You can only create details for your own offers.')
+        serializer.save()
