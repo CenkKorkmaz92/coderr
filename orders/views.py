@@ -11,16 +11,35 @@ from django.db import models
 from rest_framework import serializers
 
 class OrderListCreateView(generics.ListCreateAPIView):
+    """
+    Handle listing and creating orders with user-specific filtering.
+    """
     serializer_class = OrderSerializer
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
+        """
+        Return orders where the user is either customer or business user.
+        
+        Returns:
+            QuerySet of orders involving the authenticated user
+        """
         user = self.request.user
         return Order.objects.filter(
             models.Q(customer_user=user) | models.Q(business_user=user)
         )
 
     def perform_create(self, serializer):
+        """
+        Create an order from an offer detail with validation.
+        
+        Args:
+            serializer: The validated order serializer
+            
+        Raises:
+            ValidationError: If offer_detail_id is missing or invalid
+            PermissionDenied: If user is not a customer
+        """
         offer_detail_id = self.request.data.get('offer_detail_id')
         if not offer_detail_id:
             raise serializers.ValidationError({'offer_detail_id': 'This field is required.'})
@@ -45,31 +64,79 @@ class OrderListCreateView(generics.ListCreateAPIView):
         return order
 
 class OrderRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
+    """
+    Handle retrieving, updating, and deleting individual orders with permission checks.
+    """
     queryset = Order.objects.all()
     serializer_class = OrderSerializer
     permission_classes = [IsAuthenticated]
 
     def patch(self, request, *args, **kwargs):
+        """
+        Update order status. Only business users can update orders.
+        
+        Args:
+            request: HTTP request containing update data
+            
+        Returns:
+            Response with updated order data or 403 if unauthorized
+        """
         order = self.get_object()
         if request.user != order.business_user:
             return Response({'detail': 'Only the business user can update the order status.'}, status=status.HTTP_403_FORBIDDEN)
         return self.partial_update(request, *args, **kwargs)
 
     def delete(self, request, *args, **kwargs):
+        """
+        Delete order. Allowed for customers, business users, or admin.
+        
+        Args:
+            request: HTTP request for deletion
+            
+        Returns:
+            Response with 204 status on success or 403 if unauthorized
+        """
         order = self.get_object()
-        # Allow deletion by customer, business user, or admin
         if request.user == order.customer_user or request.user == order.business_user or request.user.is_staff:
             return self.destroy(request, *args, **kwargs)
         return Response({'detail': 'You can only delete orders you are involved in.'}, status=status.HTTP_403_FORBIDDEN)
 
 class OrderCountView(APIView):
+    """
+    Get count of in-progress orders for a business user.
+    """
     permission_classes = [IsAuthenticated]
+    
     def get(self, request, business_user_id):
+        """
+        Return count of in-progress orders for specified business user.
+        
+        Args:
+            request: HTTP request
+            business_user_id: ID of the business user
+            
+        Returns:
+            Response containing order count
+        """
         count = Order.objects.filter(business_user_id=business_user_id, status='in_progress').count()
         return Response({'order_count': count})
 
 class CompletedOrderCountView(APIView):
+    """
+    Get count of completed orders for a business user.
+    """
     permission_classes = [IsAuthenticated]
+    
     def get(self, request, business_user_id):
+        """
+        Return count of completed orders for specified business user.
+        
+        Args:
+            request: HTTP request
+            business_user_id: ID of the business user
+            
+        Returns:
+            Response containing completed order count
+        """
         count = Order.objects.filter(business_user_id=business_user_id, status='completed').count()
         return Response({'completed_order_count': count})

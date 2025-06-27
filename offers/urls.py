@@ -1,4 +1,3 @@
-# URLs for offers app
 from django.urls import path
 from .views import OfferListCreateView, OfferRetrieveUpdateDestroyView, OfferDetailRetrieveView, OfferDetailListCreateView
 

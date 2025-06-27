@@ -2,12 +2,22 @@ from django.db import models
 from django.contrib.auth.models import User
 from offers.models import OfferDetail
 
+
 class Order(models.Model):
+    """
+    Model representing an order placed by a customer for a specific offer detail.
+    
+    Orders are created when customers purchase a specific tier of service
+    from a business user's offer. The order captures all relevant details
+    at the time of purchase.
+    """
+    
     STATUS_CHOICES = [
         ('in_progress', 'In Progress'),
         ('completed', 'Completed'),
         ('cancelled', 'Cancelled'),
     ]
+    
     customer_user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='customer_orders')
     business_user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='business_orders')
     offer_detail = models.ForeignKey(OfferDetail, on_delete=models.CASCADE, related_name='orders')
@@ -22,4 +32,5 @@ class Order(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
+        """Return string representation of the order."""
         return f"Order {self.id} - {self.title} ({self.status})"

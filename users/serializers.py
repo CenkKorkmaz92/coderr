@@ -1,22 +1,38 @@
-# Serializers for users app
+"""Serializers for users app"""
 
 from django.contrib.auth.models import User
 from rest_framework import serializers
 from .models import UserProfile
 from django.contrib.auth import authenticate
 
+
 class UserProfileSerializer(serializers.ModelSerializer):
+    """
+    Serializer for user profile data.
+    
+    Includes read-only fields for username and email from the related User model.
+    """
+    
+    username = serializers.CharField(source='user.username', read_only=True)
+    email = serializers.EmailField(source='user.email', read_only=True)
+    user = serializers.PrimaryKeyRelatedField(read_only=True)
+    
     class Meta:
         model = UserProfile
         fields = [
             'user', 'username', 'first_name', 'last_name', 'file', 'location', 'tel',
             'description', 'working_hours', 'type', 'email', 'created_at'
         ]
-    username = serializers.CharField(source='user.username', read_only=True)
-    email = serializers.EmailField(source='user.email', read_only=True)
-    user = serializers.PrimaryKeyRelatedField(read_only=True)
+
 
 class RegistrationSerializer(serializers.Serializer):
+    """
+    Serializer for user registration.
+    
+    Handles user account creation along with profile setup.
+    Validates password confirmation and uniqueness constraints.
+    """
+    
     username = serializers.CharField()
     email = serializers.EmailField()
     password = serializers.CharField(write_only=True)
@@ -24,6 +40,7 @@ class RegistrationSerializer(serializers.Serializer):
     type = serializers.ChoiceField(choices=UserProfile.USER_TYPE_CHOICES)
 
     def validate(self, data):
+        """Validate registration data including password confirmation and uniqueness."""
         if data['password'] != data['repeated_password']:
             raise serializers.ValidationError("Passwords do not match.")
         if User.objects.filter(username=data['username']).exists():
@@ -33,6 +50,7 @@ class RegistrationSerializer(serializers.Serializer):
         return data
 
     def create(self, validated_data):
+        """Create a new user and associated profile."""
         user = User.objects.create_user(
             username=validated_data['username'],
             email=validated_data['email'],
@@ -44,11 +62,19 @@ class RegistrationSerializer(serializers.Serializer):
         )
         return user
 
+
 class LoginSerializer(serializers.Serializer):
+    """
+    Serializer for user authentication.
+    
+    Validates user credentials and returns the authenticated user.
+    """
+    
     username = serializers.CharField()
     password = serializers.CharField(write_only=True)
 
     def validate(self, data):
+        """Validate user credentials."""
         user = authenticate(username=data['username'], password=data['password'])
         if not user:
             raise serializers.ValidationError("Invalid credentials.")

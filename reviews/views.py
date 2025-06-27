@@ -6,15 +6,23 @@ from .serializers import ReviewSerializer
 from rest_framework.permissions import IsAuthenticated
 from django.db.models import Q
 
-# Create your views here.
 
 class ReviewListCreateView(generics.ListCreateAPIView):
+    """
+    API view for listing and creating reviews.
+    
+    Supports filtering by business_user_id and reviewer_id query parameters.
+    Only customers can create reviews, and each customer can only review
+    a business user once.
+    """
+    
     serializer_class = ReviewSerializer
     permission_classes = [IsAuthenticated]
     filter_backends = [filters.OrderingFilter]
     ordering_fields = ['updated_at', 'rating']
 
     def get_queryset(self):
+        """Get reviews with optional filtering by business user or reviewer."""
         queryset = Review.objects.all()
         business_user_id = self.request.query_params.get('business_user_id')
         reviewer_id = self.request.query_params.get('reviewer_id')
@@ -25,6 +33,7 @@ class ReviewListCreateView(generics.ListCreateAPIView):
         return queryset
 
     def perform_create(self, serializer):
+        """Create a review with validation for customer type and uniqueness."""
         reviewer = self.request.user
         business_user = serializer.validated_data['business_user']
         if reviewer.profile.type != 'customer':
@@ -33,18 +42,27 @@ class ReviewListCreateView(generics.ListCreateAPIView):
             raise permissions.PermissionDenied('You have already reviewed this business user.')
         serializer.save(reviewer=reviewer)
 
+
 class ReviewRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
+    """
+    API view for retrieving, updating, and deleting reviews.
+    
+    Only the original reviewer can update or delete their review.
+    """
+    
     queryset = Review.objects.all()
     serializer_class = ReviewSerializer
     permission_classes = [IsAuthenticated]
 
     def patch(self, request, *args, **kwargs):
+        """Update review - only allowed for the original reviewer."""
         review = self.get_object()
         if request.user != review.reviewer:
             return Response({'detail': 'Only the reviewer can update this review.'}, status=status.HTTP_403_FORBIDDEN)
         return self.partial_update(request, *args, **kwargs)
 
     def delete(self, request, *args, **kwargs):
+        """Delete review - only allowed for the original reviewer."""
         review = self.get_object()
         if request.user != review.reviewer:
             return Response({'detail': 'Only the reviewer can delete this review.'}, status=status.HTTP_403_FORBIDDEN)

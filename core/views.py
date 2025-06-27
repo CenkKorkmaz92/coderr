@@ -7,10 +7,17 @@ from reviews.models import Review
 from users.models import UserProfile
 from django.db.models import Avg
 
-# Create your views here.
 
 class BaseInfoView(APIView):
+    """
+    API view for retrieving platform statistics.
+    
+    Provides aggregate information about the platform including
+    review counts, average ratings, business profiles, and offers.
+    """
+    
     def get(self, request):
+        """Get platform statistics for dashboard display."""
         review_count = Review.objects.count()
         average_rating = Review.objects.all().aggregate(Avg('rating'))['rating__avg'] or 0
         average_rating = round(average_rating, 1)

@@ -1,9 +1,17 @@
-# Serializers for reviews app
+"""Serializers for reviews app"""
 
 from rest_framework import serializers
 from .models import Review
 
+
 class ReviewSerializer(serializers.ModelSerializer):
+    """
+    Serializer for review data.
+    
+    The reviewer field is automatically set from the authenticated user,
+    so it's marked as read-only in the serializer.
+    """
+    
     class Meta:
         model = Review
         fields = [

@@ -1,4 +1,3 @@
-# URLs for orders app
 from django.urls import path
 from .views import (
     OrderListCreateView, OrderRetrieveUpdateDestroyView,
