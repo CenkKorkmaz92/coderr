@@ -19,7 +19,6 @@ class OrderTests(APITestCase):
         self.client.force_authenticate(self.customer_user)
         url = reverse('order-list-create')
         response = self.client.post(url, {"offer_detail_id": self.detail.id}, format='json')
-        print('ORDER CREATE RESPONSE:', response.status_code, response.data)
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(Order.objects.count(), 1)
 

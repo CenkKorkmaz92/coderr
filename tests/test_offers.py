@@ -26,7 +26,6 @@ class OfferTests(APITestCase):
         self.client.force_authenticate(self.business_user)
         url = reverse('offer-list-create')
         response = self.client.post(url, self.offer_data, format='json')
-        print('OFFER CREATE RESPONSE:', response.status_code, response.data)
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(Offer.objects.count(), 1)
         self.assertEqual(OfferDetail.objects.count(), 3)
