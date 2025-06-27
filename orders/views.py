@@ -9,11 +9,10 @@ from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 from django.db import models
 from rest_framework import serializers
-from users.permissions import IsCustomerUser
 
 class OrderListCreateView(generics.ListCreateAPIView):
     serializer_class = OrderSerializer
-    permission_classes = [IsAuthenticated, IsCustomerUser]
+    permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
         user = self.request.user
@@ -57,10 +56,11 @@ class OrderRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
         return self.partial_update(request, *args, **kwargs)
 
     def delete(self, request, *args, **kwargs):
-        # Only admin/staff can delete
-        if not request.user.is_staff:
-            return Response({'detail': 'Only admin can delete orders.'}, status=status.HTTP_403_FORBIDDEN)
-        return self.destroy(request, *args, **kwargs)
+        order = self.get_object()
+        # Allow deletion by customer, business user, or admin
+        if request.user == order.customer_user or request.user == order.business_user or request.user.is_staff:
+            return self.destroy(request, *args, **kwargs)
+        return Response({'detail': 'You can only delete orders you are involved in.'}, status=status.HTTP_403_FORBIDDEN)
 
 class OrderCountView(APIView):
     permission_classes = [IsAuthenticated]
