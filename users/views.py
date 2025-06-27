@@ -1,13 +1,21 @@
+"""Views for user management including registration, login, and profile management."""
+
+# Standard library
+# (none in this file)
+
+# Third-party
 from django.shortcuts import render
+from django.contrib.auth.models import User
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status, permissions
 from rest_framework.authtoken.models import Token
-from django.contrib.auth.models import User
-from .models import UserProfile
-from .serializers import RegistrationSerializer, LoginSerializer, UserProfileSerializer
 from rest_framework.generics import RetrieveUpdateAPIView
 from rest_framework.permissions import IsAuthenticated
+
+# Local imports
+from .models import UserProfile
+from .serializers import RegistrationSerializer, LoginSerializer, UserProfileSerializer
 
 class RegistrationView(APIView):
     """

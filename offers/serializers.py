@@ -1,9 +1,15 @@
-"""Serializers for offers app"""
+"""Serializers for offers and offer details."""
 
+# Standard library
+# (none in this file)
+
+# Third-party
+from django.contrib.auth.models import User
 from rest_framework import serializers
+
+# Local imports
 from .models import Offer, OfferDetail
 from users.models import UserProfile
-from django.contrib.auth.models import User
 
 
 class OfferDetailSerializer(serializers.ModelSerializer):
@@ -16,7 +22,7 @@ class OfferDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = OfferDetail
         fields = [
-            'id', 'title', 'revisions', 'delivery_time_in_days', 'price', 'features', 'offer_type', 'offer'
+            'id', 'title', 'revisions', 'delivery_time_in_days', 'price', 'features', 'offer_type'
         ]
         read_only_fields = ['id']
 
@@ -40,7 +46,7 @@ class OfferSerializer(serializers.ModelSerializer):
             'id', 'user', 'title', 'image', 'description', 'created_at', 'updated_at',
             'details', 'min_price', 'min_delivery_time', 'user_details'
         ]
-        read_only_fields = ['id', 'created_at', 'updated_at', 'min_price', 'min_delivery_time', 'user_details']
+        read_only_fields = ['id', 'created_at', 'updated_at', 'min_price', 'min_delivery_time', 'user_details', 'user']
 
     def get_user_details(self, obj):
         """Get user profile details for display purposes."""
@@ -61,6 +67,28 @@ class OfferSerializer(serializers.ModelSerializer):
         for detail_data in details_data:
             OfferDetail.objects.create(offer=offer, **detail_data)
         return offer
+
+    def to_internal_value(self, data):
+        """Handle multipart form data with JSON strings for nested fields."""
+        import json
+        
+        # Handle QueryDict from multipart form data
+        if hasattr(data, 'getlist'):
+            # Convert QueryDict to regular dict
+            data_dict = {}
+            for key in data.keys():
+                values = data.getlist(key)
+                data_dict[key] = values[0] if len(values) == 1 else values
+            data = data_dict
+        
+        # If details is a string (from multipart form data), parse it as JSON
+        if isinstance(data.get('details'), str):
+            try:
+                data['details'] = json.loads(data['details'])
+            except (json.JSONDecodeError, ValueError) as e:
+                raise serializers.ValidationError({'details': f'Invalid JSON format: {str(e)}'})
+        
+        return super().to_internal_value(data)
 
     def update(self, instance, validated_data):
         """Update an offer and its associated offer details."""

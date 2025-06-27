@@ -1,10 +1,18 @@
+"""Views for offer management including CRUD operations and filtering."""
+
+# Standard library
+# (none in this file)
+
+# Third-party
 from django.shortcuts import render
 from rest_framework import generics, permissions, status, filters
 from rest_framework.response import Response
-from .models import Offer, OfferDetail
-from .serializers import OfferSerializer, OfferDetailSerializer
 from rest_framework.permissions import IsAuthenticatedOrReadOnly
 from django_filters.rest_framework import DjangoFilterBackend
+
+# Local imports
+from .models import Offer, OfferDetail
+from .serializers import OfferSerializer, OfferDetailSerializer
 
 class OfferListCreateView(generics.ListCreateAPIView):
     """
@@ -24,7 +32,12 @@ class OfferListCreateView(generics.ListCreateAPIView):
         
         Args:
             serializer: The validated offer serializer
+            
+        Raises:
+            PermissionDenied: If user is not a business user
         """
+        if self.request.user.profile.type != 'business':
+            raise permissions.PermissionDenied('Only business users can create offers.')
         serializer.save(user=self.request.user)
 
 class OfferRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
