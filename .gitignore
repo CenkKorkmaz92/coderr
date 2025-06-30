@@ -73,8 +73,10 @@ test_*.png
 # Documentation files (keep only README.md in repository)
 *_DOCUMENTATION.md
 CLEANUP_SUMMARY.md
-MENTOR_REVIEW_README.md
 IMAGE_UPLOAD_DOCUMENTATION.md
+
+# Git configuration
+.gitignore
 
 # Coverage reports
 htmlcov/
