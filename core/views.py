@@ -1,7 +1,7 @@
 from django.shortcuts import render
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework import status
+from rest_framework import status, permissions
 from offers.models import Offer
 from reviews.models import Review
 from users.models import UserProfile
@@ -15,6 +15,7 @@ class BaseInfoView(APIView):
     Provides aggregate information about the platform including
     review counts, average ratings, business profiles, and offers.
     """
+    permission_classes = [permissions.AllowAny]  # No permissions required
     
     def get(self, request):
         """Get platform statistics for dashboard display."""
