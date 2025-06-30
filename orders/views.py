@@ -40,15 +40,27 @@ class OrderListCreateView(generics.ListCreateAPIView):
             ValidationError: If offer_detail_id is missing or invalid
             PermissionDenied: If user is not a customer
         """
+        # Check user permissions first
+        try:
+            user_profile = self.request.user.profile
+        except AttributeError:
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied('User profile not found.')
+            
+        if user_profile.type != 'customer':
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied('Only customers can create orders.')
+        
+        # Then validate offer detail
         offer_detail_id = self.request.data.get('offer_detail_id')
         if not offer_detail_id:
             raise serializers.ValidationError({'offer_detail_id': 'This field is required.'})
         try:
             offer_detail = OfferDetail.objects.get(id=offer_detail_id)
         except OfferDetail.DoesNotExist:
-            raise serializers.ValidationError({'offer_detail_id': 'Invalid offer_detail_id.'})
-        if self.request.user.profile.type != 'customer':
-            raise permissions.PermissionDenied('Only customers can create orders.')
+            from rest_framework.exceptions import NotFound
+            raise NotFound('OfferDetail not found.')
+            
         business_user = offer_detail.offer.user
         order = serializer.save(
             customer_user=self.request.user,
@@ -101,6 +113,22 @@ class OrderRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
             return self.destroy(request, *args, **kwargs)
         return Response({'detail': 'You can only delete orders you are involved in.'}, status=status.HTTP_403_FORBIDDEN)
 
+    def get_object(self):
+        """
+        Get order with proper error handling.
+        
+        Returns:
+            Order instance
+            
+        Raises:
+            Http404: If order doesn't exist
+        """
+        try:
+            return Order.objects.get(pk=self.kwargs['pk'])
+        except Order.DoesNotExist:
+            from django.http import Http404
+            raise Http404("Order not found")
+
 class OrderCountView(APIView):
     """
     Get count of in-progress orders for a business user.
@@ -117,7 +145,17 @@ class OrderCountView(APIView):
             
         Returns:
             Response containing order count
+            
+        Raises:
+            Http404: If business user doesn't exist
         """
+        # Check if business user exists
+        try:
+            User.objects.get(id=business_user_id)
+        except User.DoesNotExist:
+            from django.http import Http404
+            raise Http404("Business user not found")
+            
         count = Order.objects.filter(business_user_id=business_user_id, status='in_progress').count()
         return Response({'order_count': count})
 
@@ -137,6 +175,16 @@ class CompletedOrderCountView(APIView):
             
         Returns:
             Response containing completed order count
+            
+        Raises:
+            Http404: If business user doesn't exist
         """
+        # Check if business user exists
+        try:
+            User.objects.get(id=business_user_id)
+        except User.DoesNotExist:
+            from django.http import Http404
+            raise Http404("Business user not found")
+            
         count = Order.objects.filter(business_user_id=business_user_id, status='completed').count()
         return Response({'completed_order_count': count})
