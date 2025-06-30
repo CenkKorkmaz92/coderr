@@ -25,6 +25,24 @@ class OfferDetailSerializer(serializers.ModelSerializer):
             'id', 'title', 'revisions', 'delivery_time_in_days', 'price', 'features', 'offer_type'
         ]
         read_only_fields = ['id']
+    
+    def validate_delivery_time_in_days(self, value):
+        """Validate delivery time is a positive integer."""
+        if not isinstance(value, int) or value <= 0:
+            raise serializers.ValidationError("Delivery time must be a positive integer.")
+        return value
+    
+    def validate_price(self, value):
+        """Validate price is a positive number."""
+        if value <= 0:
+            raise serializers.ValidationError("Price must be positive.")
+        return value
+    
+    def validate_revisions(self, value):
+        """Validate revisions is a non-negative integer."""
+        if not isinstance(value, int) or value < 0:
+            raise serializers.ValidationError("Revisions must be a non-negative integer.")
+        return value
 
 
 class OfferSerializer(serializers.ModelSerializer):
@@ -67,6 +85,21 @@ class OfferSerializer(serializers.ModelSerializer):
         for detail_data in details_data:
             OfferDetail.objects.create(offer=offer, **detail_data)
         return offer
+
+    def validate_details(self, value):
+        """Validate that exactly 3 offer details are provided."""
+        if len(value) != 3:
+            raise serializers.ValidationError("Exactly 3 offer details (basic, standard, premium) are required.")
+        
+        # Check for required offer types
+        offer_types = [detail.get('offer_type') for detail in value]
+        required_types = ['basic', 'standard', 'premium']
+        
+        for required_type in required_types:
+            if required_type not in offer_types:
+                raise serializers.ValidationError(f"Missing required offer type: {required_type}")
+        
+        return value
 
     def to_internal_value(self, data):
         """Handle multipart form data with JSON strings for nested fields."""
