@@ -4,14 +4,14 @@
 # (none in this file)
 
 # Third-party
-from django.shortcuts import render
+from django.shortcuts import render, get_object_or_404
 from django.contrib.auth.models import User
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework import status, permissions
+from rest_framework import status, permissions, generics
 from rest_framework.authtoken.models import Token
-from rest_framework.generics import RetrieveUpdateAPIView
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.generics import RetrieveUpdateAPIView, ListAPIView
+from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly
 
 # Local imports
 from .models import UserProfile
@@ -21,6 +21,7 @@ class RegistrationView(APIView):
     """
     Handle user registration and return authentication token.
     """
+    permission_classes = [permissions.AllowAny]
     
     def post(self, request):
         """
@@ -49,6 +50,7 @@ class LoginView(APIView):
     """
     Handle user login and return authentication token.
     """
+    permission_classes = [permissions.AllowAny]
     
     def post(self, request):
         """
@@ -73,6 +75,28 @@ class LoginView(APIView):
             }, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+class ProfileListView(ListAPIView):
+    """
+    List user profiles with optional filtering by user type.
+    """
+    serializer_class = UserProfileSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        """
+        Get profiles with optional user type filtering.
+        
+        Returns:
+            QuerySet of UserProfile instances
+        """
+        queryset = UserProfile.objects.select_related('user').all()
+        user_type = self.kwargs.get('user_type')
+        
+        if user_type:
+            queryset = queryset.filter(type=user_type)
+            
+        return queryset
+
 class ProfileView(RetrieveUpdateAPIView):
     """
     Handle user profile retrieval and updates.
@@ -83,10 +107,29 @@ class ProfileView(RetrieveUpdateAPIView):
 
     def get_object(self):
         """
-        Retrieve user profile by user ID.
+        Retrieve user profile by user ID with proper permission checks.
         
         Returns:
             UserProfile instance for the specified user
+            
+        Raises:
+            Http404: If profile doesn't exist
+            PermissionDenied: If user doesn't own the profile (for updates)
         """
         pk = self.kwargs['pk']
-        return UserProfile.objects.get(user__pk=pk)
+        try:
+            profile = UserProfile.objects.select_related('user').get(user__pk=pk)
+        except UserProfile.DoesNotExist:
+            from django.http import Http404
+            raise Http404("Profile not found")
+        
+        # Allow read access for all authenticated users
+        if self.request.method == 'GET':
+            return profile
+            
+        # For updates (PATCH, PUT), only allow profile owner
+        if profile.user != self.request.user:
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied("You can only update your own profile")
+            
+        return profile
