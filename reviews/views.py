@@ -36,10 +36,20 @@ class ReviewListCreateView(generics.ListCreateAPIView):
         """Create a review with validation for customer type and uniqueness."""
         reviewer = self.request.user
         business_user = serializer.validated_data['business_user']
-        if reviewer.profile.type != 'customer':
-            raise permissions.PermissionDenied('Only customers can create reviews.')
+        
+        # Check if reviewer has a profile
+        try:
+            reviewer_profile = reviewer.profile
+        except AttributeError:
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied('User profile not found.')
+            
+        if reviewer_profile.type != 'customer':
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied('Only customers can create reviews.')
         if Review.objects.filter(business_user=business_user, reviewer=reviewer).exists():
-            raise permissions.PermissionDenied('You have already reviewed this business user.')
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied('You have already reviewed this business user.')
         serializer.save(reviewer=reviewer)
 
 
@@ -53,6 +63,22 @@ class ReviewRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Review.objects.all()
     serializer_class = ReviewSerializer
     permission_classes = [IsAuthenticated]
+
+    def get_object(self):
+        """
+        Get review with proper error handling.
+        
+        Returns:
+            Review instance
+            
+        Raises:
+            Http404: If review doesn't exist
+        """
+        try:
+            return Review.objects.get(pk=self.kwargs['pk'])
+        except Review.DoesNotExist:
+            from django.http import Http404
+            raise Http404("Review not found")
 
     def patch(self, request, *args, **kwargs):
         """Update review - only allowed for the original reviewer."""
