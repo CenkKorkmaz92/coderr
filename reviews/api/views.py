@@ -17,7 +17,7 @@ class ReviewListCreateView(generics.ListCreateAPIView):
     """
     
     serializer_class = ReviewSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [permissions.AllowAny]
     filter_backends = [filters.OrderingFilter]
     ordering_fields = ['updated_at', 'rating']
 
@@ -26,11 +26,30 @@ class ReviewListCreateView(generics.ListCreateAPIView):
         queryset = Review.objects.all()
         business_user_id = self.request.query_params.get('business_user_id')
         reviewer_id = self.request.query_params.get('reviewer_id')
+        
         if business_user_id:
-            queryset = queryset.filter(business_user_id=business_user_id)
+            try:
+                business_user_id = int(business_user_id)
+                queryset = queryset.filter(business_user_id=business_user_id)
+            except (ValueError, TypeError):
+                pass
+                
         if reviewer_id:
-            queryset = queryset.filter(reviewer_id=reviewer_id)
-        return queryset
+            try:
+                reviewer_id = int(reviewer_id)
+                queryset = queryset.filter(reviewer_id=reviewer_id)
+            except (ValueError, TypeError):
+                pass
+                
+        return queryset.order_by('-created_at')
+
+    def list(self, request, *args, **kwargs):
+        """
+        Return a simple array of reviews, not a paginated response.
+        """
+        queryset = self.get_queryset()
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
 
     def perform_create(self, serializer):
         """Create a review with validation for customer type and uniqueness."""
@@ -71,13 +90,9 @@ class ReviewRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
             Review instance
             
         Raises:
-            Http404: If review doesn't exist
+            Review.DoesNotExist: If review doesn't exist
         """
-        try:
-            return Review.objects.get(pk=self.kwargs['pk'])
-        except Review.DoesNotExist:
-            from django.http import Http404
-            raise Http404("Review not found")
+        return Review.objects.get(pk=self.kwargs['pk'])
 
     def patch(self, request, *args, **kwargs):
         """Update review - only allowed for the original reviewer."""
@@ -88,7 +103,13 @@ class ReviewRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
 
     def delete(self, request, *args, **kwargs):
         """Delete review - only allowed for the original reviewer."""
-        review = self.get_object()
+        try:
+            review = self.get_object()
+        except Review.DoesNotExist:
+            return Response({'detail': 'Review with given id does not exist'}, status=status.HTTP_404_NOT_FOUND)
+        
         if request.user != review.reviewer:
             return Response({'detail': 'Only the reviewer can delete this review.'}, status=status.HTTP_403_FORBIDDEN)
-        return self.destroy(request, *args, **kwargs)
+        
+        review.delete()
+        return Response({}, status=status.HTTP_204_NO_CONTENT)
