@@ -1,13 +1,6 @@
 """Serializers for offers and offer details."""
-
-# Standard library
-# (none in this file)
-
-# Third-party
 from django.contrib.auth.models import User
 from rest_framework import serializers
-
-# Local imports
 from .models import Offer, OfferDetail
 from users.models import UserProfile
 
@@ -24,8 +17,25 @@ class OfferDetailSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'title', 'revisions', 'delivery_time_in_days', 'price', 'features', 'offer_type'
         ]
-        read_only_fields = ['id']
+        extra_kwargs = {
+            'id': {'required': False, 'allow_null': True}
+        }
     
+    def to_representation(self, instance):
+        """Convert the price field to float for output."""
+        data = super().to_representation(instance)
+        if 'price' in data:
+            data['price'] = float(data['price'])
+        return data
+    
+    def to_internal_value(self, data):
+        """Process incoming data and preserve id for updates."""
+        if 'id' in data:
+            validated_data = super().to_internal_value(data)
+            validated_data['id'] = data['id']
+            return validated_data
+        return super().to_internal_value(data)
+
     def validate_delivery_time_in_days(self, value):
         """Validate delivery time is a positive integer."""
         if not isinstance(value, int) or value <= 0:
@@ -54,7 +64,7 @@ class OfferSerializer(serializers.ModelSerializer):
     """
     
     details = OfferDetailSerializer(many=True)
-    min_price = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
+    min_price = serializers.SerializerMethodField()
     min_delivery_time = serializers.IntegerField(read_only=True)
     user_details = serializers.SerializerMethodField()
 
@@ -65,6 +75,11 @@ class OfferSerializer(serializers.ModelSerializer):
             'details', 'min_price', 'min_delivery_time', 'user_details'
         ]
         read_only_fields = ['id', 'created_at', 'updated_at', 'min_price', 'min_delivery_time', 'user_details', 'user']
+    
+    def get_min_price(self, obj):
+        """Get minimum price as a float number."""
+        min_price = obj.min_price
+        return float(min_price) if min_price else None
 
     def get_user_details(self, obj):
         """Get user profile details for display purposes."""
@@ -87,17 +102,21 @@ class OfferSerializer(serializers.ModelSerializer):
         return offer
 
     def validate_details(self, value):
-        """Validate that exactly 3 offer details are provided."""
-        if len(value) != 3:
-            raise serializers.ValidationError("Exactly 3 offer details (basic, standard, premium) are required.")
-        
-        # Check for required offer types
-        offer_types = [detail.get('offer_type') for detail in value]
-        required_types = ['basic', 'standard', 'premium']
-        
-        for required_type in required_types:
-            if required_type not in offer_types:
-                raise serializers.ValidationError(f"Missing required offer type: {required_type}")
+        """
+        Validate offer details for creation or partial updates.
+        For creation, exactly 3 details are required.
+        For updates, can be partial.
+        """
+        if not self.instance:
+            if len(value) != 3:
+                raise serializers.ValidationError("Exactly 3 offer details (basic, standard, premium) are required.")
+            
+            offer_types = [detail.get('offer_type') for detail in value]
+            required_types = ['basic', 'standard', 'premium']
+            
+            for required_type in required_types:
+                if required_type not in offer_types:
+                    raise serializers.ValidationError(f"Missing required offer type: {required_type}")
         
         return value
 
@@ -105,16 +124,13 @@ class OfferSerializer(serializers.ModelSerializer):
         """Handle multipart form data with JSON strings for nested fields."""
         import json
         
-        # Handle QueryDict from multipart form data
         if hasattr(data, 'getlist'):
-            # Convert QueryDict to regular dict
             data_dict = {}
             for key in data.keys():
                 values = data.getlist(key)
                 data_dict[key] = values[0] if len(values) == 1 else values
             data = data_dict
         
-        # If details is a string (from multipart form data), parse it as JSON
         if isinstance(data.get('details'), str):
             try:
                 data['details'] = json.loads(data['details'])
@@ -124,20 +140,27 @@ class OfferSerializer(serializers.ModelSerializer):
         return super().to_internal_value(data)
 
     def update(self, instance, validated_data):
-        """Update an offer and its associated offer details."""
+        """Update an offer and its associated offer details (allows partial updates)."""
         details_data = validated_data.pop('details', None)
+        
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
         instance.save()
+        
         if details_data is not None:
             for detail_data in details_data:
                 detail_id = detail_data.get('id', None)
                 if detail_id:
-                    detail = OfferDetail.objects.get(id=detail_id, offer=instance)
-                    for attr, value in detail_data.items():
-                        if attr != 'id':
-                            setattr(detail, attr, value)
-                    detail.save()
+                    try:
+                        detail = OfferDetail.objects.get(id=detail_id, offer=instance)
+                        for attr, value in detail_data.items():
+                            if attr != 'id':
+                                setattr(detail, attr, value)
+                        detail.save()
+                    except OfferDetail.DoesNotExist:
+                        raise serializers.ValidationError(f"OfferDetail with id {detail_id} not found")
                 else:
-                    OfferDetail.objects.create(offer=instance, **detail_data)
+                    raise serializers.ValidationError("Detail updates require an 'id' field to identify the detail to update")
+        
+        instance.refresh_from_db()
         return instance
