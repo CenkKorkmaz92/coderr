@@ -37,7 +37,18 @@ class OrderListCreateView(generics.ListCreateAPIView):
     def perform_create(self, serializer):
         """
         Create a new order by copying data from the selected offer detail.
+        Only customer users can create orders.
         """
+        try:
+            user_profile = self.request.user.profile
+        except AttributeError:
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied('User profile not found.')
+            
+        if user_profile.type != 'customer':
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied('Only customer users can create orders.')
+            
         offer_detail_id = self.request.data.get('offer_detail_id')
         offer_detail = get_object_or_404(OfferDetail, id=offer_detail_id)
         
@@ -73,7 +84,7 @@ class OrderCountView(APIView):
     """
     Return the total count of orders for a specific business user.
     """
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [IsAuthenticated]
     
     def get(self, request, business_user_id):
         """Get order count for business user."""
@@ -85,7 +96,7 @@ class CompletedOrderCountView(APIView):
     """
     Return the count of completed orders for a specific business user.
     """
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [IsAuthenticated]
     
     def get(self, request, business_user_id):
         """Get completed order count for business user."""

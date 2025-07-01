@@ -133,7 +133,7 @@ class BusinessProfileListView(APIView):
     """
     List business user profiles without pagination.
     """
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [IsAuthenticated]
     
     def get(self, request):
         """Get list of business profiles as array."""
@@ -146,7 +146,7 @@ class CustomerProfileListView(APIView):
     """
     List customer user profiles without pagination.
     """
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [IsAuthenticated]
     
     def get(self, request):
         """Get list of customer profiles as array."""

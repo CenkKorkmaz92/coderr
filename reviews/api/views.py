@@ -17,7 +17,7 @@ class ReviewListCreateView(generics.ListCreateAPIView):
     """
     
     serializer_class = ReviewSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [IsAuthenticated]
     filter_backends = [filters.OrderingFilter]
     ordering_fields = ['updated_at', 'rating']
 
@@ -42,6 +42,12 @@ class ReviewListCreateView(generics.ListCreateAPIView):
                 pass
                 
         return queryset.order_by('-created_at')
+
+    def get_permissions(self):
+        """
+        Require authentication for all operations.
+        """
+        return [IsAuthenticated()]
 
     def list(self, request, *args, **kwargs):
         """
