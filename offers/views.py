@@ -1,16 +1,11 @@
 """Views for offer management including CRUD operations and filtering."""
-
-# Standard library
-# (none in this file)
-
-# Third-party
 from django.shortcuts import render
+from django.db.models import Min
 from rest_framework import generics, permissions, status, filters
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticatedOrReadOnly, IsAuthenticated
 from django_filters.rest_framework import DjangoFilterBackend
 
-# Local imports
 from .models import Offer, OfferDetail
 from .serializers import OfferSerializer, OfferDetailSerializer
 
@@ -20,11 +15,11 @@ class OfferListCreateView(generics.ListCreateAPIView):
     """
     queryset = Offer.objects.all().prefetch_related('details')
     serializer_class = OfferSerializer
-    permission_classes = [permissions.AllowAny]  # Public access for browsing offers
+    permission_classes = [permissions.AllowAny]  
     filter_backends = [filters.SearchFilter, filters.OrderingFilter, DjangoFilterBackend]
     search_fields = ['title', 'description']
-    ordering_fields = ['updated_at', 'min_price']
-    filterset_fields = ['user', 'details__price', 'details__delivery_time_in_days']
+    ordering_fields = ['updated_at', 'created_at'] 
+    filterset_fields = ['user']
 
     def get_permissions(self):
         """
@@ -52,7 +47,6 @@ class OfferListCreateView(generics.ListCreateAPIView):
         Raises:
             PermissionDenied: If user is not a business user
         """
-        # Check if user has a profile
         try:
             user_profile = self.request.user.profile
         except AttributeError:
@@ -64,13 +58,37 @@ class OfferListCreateView(generics.ListCreateAPIView):
             raise PermissionDenied('Only business users can create offers.')
         serializer.save(user=self.request.user)
 
+    def get_queryset(self):
+        """
+        Filter offers based on min_price and max_delivery_time query parameters.
+        """
+        queryset = super().get_queryset()
+        
+        min_price = self.request.query_params.get('min_price')
+        if min_price:
+            try:
+                min_price = float(min_price)
+                queryset = queryset.filter(details__price__gte=min_price).distinct()
+            except (ValueError, TypeError):
+                pass 
+        
+        max_delivery_time = self.request.query_params.get('max_delivery_time')
+        if max_delivery_time:
+            try:
+                max_delivery_time = int(max_delivery_time)
+                queryset = queryset.filter(details__delivery_time_in_days__lte=max_delivery_time).distinct()
+            except (ValueError, TypeError):
+                pass 
+        
+        return queryset
+
 class OfferRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
     """
     Handle retrieving, updating, and deleting individual offers.
     """
     queryset = Offer.objects.all().prefetch_related('details')
     serializer_class = OfferSerializer
-    permission_classes = [IsAuthenticated]  # Require auth for all operations
+    permission_classes = [IsAuthenticated] 
 
     def get_object(self):
         """
@@ -89,11 +107,9 @@ class OfferRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
             from django.http import Http404
             raise Http404("Offer not found")
         
-        # Allow read access for all users
         if self.request.method == 'GET':
             return offer
             
-        # For updates/deletes, only allow offer owner
         if offer.user != self.request.user:
             from rest_framework.exceptions import PermissionDenied
             raise PermissionDenied("You can only modify your own offers")
@@ -115,7 +131,7 @@ class OfferDetailRetrieveView(generics.RetrieveAPIView):
     """
     queryset = OfferDetail.objects.all()
     serializer_class = OfferDetailSerializer
-    permission_classes = [permissions.IsAuthenticated]  # Require authentication
+    permission_classes = [permissions.IsAuthenticated]
 
 class OfferDetailListCreateView(generics.ListCreateAPIView):
     """
