@@ -10,11 +10,12 @@ class UserProfileSerializer(serializers.ModelSerializer):
     """
     Serializer for user profile data.
     
-    Includes read-only fields for username and email from the related User model.
+    Includes fields for username and email from the related User model.
+    Username is read-only, but email can be updated.
     """
     
     username = serializers.CharField(source='user.username', read_only=True)
-    email = serializers.EmailField(source='user.email', read_only=True)
+    email = serializers.EmailField(source='user.email')
     user = serializers.PrimaryKeyRelatedField(read_only=True)
     
     class Meta:
@@ -23,6 +24,22 @@ class UserProfileSerializer(serializers.ModelSerializer):
             'user', 'username', 'first_name', 'last_name', 'file', 'location', 'tel',
             'description', 'working_hours', 'type', 'email', 'created_at'
         ]
+    
+    def update(self, instance, validated_data):
+        """Update user profile and related user fields like email."""
+        user_data = validated_data.pop('user', {})
+        
+        if user_data:
+            user = instance.user
+            for attr, value in user_data.items():
+                setattr(user, attr, value)
+            user.save()
+        
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+        
+        return instance
 
 
 class RegistrationSerializer(serializers.Serializer):
