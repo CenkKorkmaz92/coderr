@@ -40,7 +40,6 @@ class OrderListCreateView(generics.ListCreateAPIView):
             ValidationError: If offer_detail_id is missing or invalid
             PermissionDenied: If user is not a customer
         """
-        # Check user permissions first
         try:
             user_profile = self.request.user.profile
         except AttributeError:
@@ -51,7 +50,6 @@ class OrderListCreateView(generics.ListCreateAPIView):
             from rest_framework.exceptions import PermissionDenied
             raise PermissionDenied('Only customers can create orders.')
         
-        # Then validate offer detail
         offer_detail_id = self.request.data.get('offer_detail_id')
         if not offer_detail_id:
             raise serializers.ValidationError({'offer_detail_id': 'This field is required.'})
@@ -149,7 +147,6 @@ class OrderCountView(APIView):
         Raises:
             Http404: If business user doesn't exist
         """
-        # Check if business user exists
         try:
             User.objects.get(id=business_user_id)
         except User.DoesNotExist:
@@ -179,7 +176,6 @@ class CompletedOrderCountView(APIView):
         Raises:
             Http404: If business user doesn't exist
         """
-        # Check if business user exists
         try:
             User.objects.get(id=business_user_id)
         except User.DoesNotExist:
