@@ -1,9 +1,5 @@
 """Views for user management including registration, login, and profile management."""
 
-# Standard library
-# (none in this file)
-
-# Third-party
 from django.shortcuts import render, get_object_or_404
 from django.contrib.auth.models import User
 from rest_framework.views import APIView
@@ -14,7 +10,6 @@ from rest_framework.generics import RetrieveUpdateAPIView, ListAPIView
 from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly
 from rest_framework.views import APIView
 
-# Local imports
 from ..models import UserProfile
 from .serializers import RegistrationSerializer, LoginSerializer, UserProfileSerializer
 
@@ -124,11 +119,9 @@ class ProfileView(RetrieveUpdateAPIView):
             from django.http import Http404
             raise Http404("Profile not found")
         
-        # Allow read access for all authenticated users
         if self.request.method == 'GET':
             return profile
             
-        # For updates (PATCH, PUT), only allow profile owner
         if profile.user != self.request.user:
             from rest_framework.exceptions import PermissionDenied
             raise PermissionDenied("You can only update your own profile")
@@ -140,7 +133,7 @@ class BusinessProfileListView(APIView):
     """
     List business user profiles without pagination.
     """
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.AllowAny]
     
     def get(self, request):
         """Get list of business profiles as array."""
@@ -153,7 +146,7 @@ class CustomerProfileListView(APIView):
     """
     List customer user profiles without pagination.
     """
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.AllowAny]
     
     def get(self, request):
         """Get list of customer profiles as array."""
