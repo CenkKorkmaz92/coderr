@@ -18,7 +18,18 @@ A Django REST Framework backend for the Coderr freelance platform with comprehen
 
 ### Installation
 
-1. **Install dependencies**:
+1. **Create virtual environment** (recommended):
+   ```bash
+   python -m venv venv
+   
+   # Activate virtual environment
+   # Windows:
+   venv\Scripts\activate
+   # Linux/Mac:
+   source venv/bin/activate
+   ```
+
+2. **Install dependencies**:
    ```bash
    pip install -r requirements.txt
    ```
@@ -49,6 +60,8 @@ The API will be available at `http://127.0.0.1:8000/api/`
 ### Users & Profiles
 - `GET /api/profile/` - List user profiles
 - `GET/PATCH /api/profile/{id}/` - Retrieve/update user profile (supports image upload)
+- `GET /api/profiles/business/` - List business profiles (returns array)
+- `GET /api/profiles/customer/` - List customer profiles (returns array)
 
 ### Offers
 - `GET /api/offers/` - List offers
@@ -96,12 +109,17 @@ Test files are available locally for development but excluded from the repositor
 ### Project Structure
 ```
 backend/
-├── coderr_backend/          # Django project settings
+├── core/                    # Django project settings
+├── base/                    # Base application
+│   └── api/                 # Base API views and serializers
 ├── users/                   # User management app
+│   └── api/                 # User API views and serializers
 ├── offers/                  # Offer management app
+│   └── api/                 # Offer API views and serializers
 ├── orders/                  # Order management app
+│   └── api/                 # Order API views and serializers
 ├── reviews/                 # Review system app
-├── core/                    # Core functionality app
+│   └── api/                 # Review API views and serializers
 ├── media/                   # User uploaded files
 ├── requirements.txt         # Python dependencies
 └── manage.py               # Django management script

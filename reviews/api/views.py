@@ -1,7 +1,7 @@
 from django.shortcuts import render
 from rest_framework import generics, permissions, status, filters
 from rest_framework.response import Response
-from .models import Review
+from ..models import Review
 from .serializers import ReviewSerializer
 from rest_framework.permissions import IsAuthenticated
 from django.db.models import Q

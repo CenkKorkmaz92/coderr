@@ -1,7 +1,7 @@
 """Serializers for offers and offer details."""
 from django.contrib.auth.models import User
 from rest_framework import serializers
-from .models import Offer, OfferDetail
+from ..models import Offer, OfferDetail
 from users.models import UserProfile
 
 
@@ -150,6 +150,8 @@ class OfferSerializer(serializers.ModelSerializer):
         if details_data is not None:
             for detail_data in details_data:
                 detail_id = detail_data.get('id', None)
+                offer_type = detail_data.get('offer_type', None)
+                
                 if detail_id:
                     try:
                         detail = OfferDetail.objects.get(id=detail_id, offer=instance)
@@ -159,8 +161,16 @@ class OfferSerializer(serializers.ModelSerializer):
                         detail.save()
                     except OfferDetail.DoesNotExist:
                         raise serializers.ValidationError(f"OfferDetail with id {detail_id} not found")
+                elif offer_type:
+                    try:
+                        detail = OfferDetail.objects.get(offer=instance, offer_type=offer_type)
+                        for attr, value in detail_data.items():
+                            setattr(detail, attr, value)
+                        detail.save()
+                    except OfferDetail.DoesNotExist:
+                        raise serializers.ValidationError(f"OfferDetail with offer_type '{offer_type}' not found")
                 else:
-                    raise serializers.ValidationError("Detail updates require an 'id' field to identify the detail to update")
+                    raise serializers.ValidationError("Detail updates require either an 'id' or 'offer_type' field to identify the detail to update")
         
         instance.refresh_from_db()
         return instance

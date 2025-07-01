@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import OfferListCreateView, OfferRetrieveUpdateDestroyView, OfferDetailRetrieveView, OfferDetailListCreateView
+from .api.views import OfferListCreateView, OfferRetrieveUpdateDestroyView, OfferDetailRetrieveView, OfferDetailListCreateView
 
 urlpatterns = [
     path('offers/', OfferListCreateView.as_view(), name='offer-list-create'),

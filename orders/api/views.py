@@ -1,7 +1,7 @@
 from django.shortcuts import render
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
-from .models import Order
+from ..models import Order
 from .serializers import OrderSerializer
 from offers.models import OfferDetail
 from django.contrib.auth.models import User

@@ -6,7 +6,7 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticatedOrReadOnly, IsAuthenticated
 from django_filters.rest_framework import DjangoFilterBackend
 
-from .models import Offer, OfferDetail
+from ..models import Offer, OfferDetail
 from .serializers import OfferSerializer, OfferDetailSerializer
 
 class OfferListCreateView(generics.ListCreateAPIView):
@@ -70,7 +70,8 @@ class OfferListCreateView(generics.ListCreateAPIView):
                 min_price = float(min_price)
                 queryset = queryset.filter(details__price__gte=min_price).distinct()
             except (ValueError, TypeError):
-                pass 
+                from rest_framework.exceptions import ValidationError
+                raise ValidationError({'min_price': 'Must be a valid number'})
         
         max_delivery_time = self.request.query_params.get('max_delivery_time')
         if max_delivery_time:
@@ -78,7 +79,8 @@ class OfferListCreateView(generics.ListCreateAPIView):
                 max_delivery_time = int(max_delivery_time)
                 queryset = queryset.filter(details__delivery_time_in_days__lte=max_delivery_time).distinct()
             except (ValueError, TypeError):
-                pass 
+                from rest_framework.exceptions import ValidationError
+                raise ValidationError({'max_delivery_time': 'Must be a valid integer'})
         
         return queryset
 

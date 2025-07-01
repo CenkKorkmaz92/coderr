@@ -24,9 +24,11 @@ class BaseInfoView(APIView):
         average_rating = round(average_rating, 1)
         business_profile_count = UserProfile.objects.filter(type='business').count()
         offer_count = Offer.objects.count()
+        profile_count = UserProfile.objects.count()
         return Response({
             'review_count': review_count,
             'average_rating': average_rating,
             'business_profile_count': business_profile_count,
-            'offer_count': offer_count
+            'offer_count': offer_count,
+            'profile_count': profile_count
         }, status=status.HTTP_200_OK)

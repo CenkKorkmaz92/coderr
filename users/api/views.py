@@ -12,9 +12,10 @@ from rest_framework import status, permissions, generics
 from rest_framework.authtoken.models import Token
 from rest_framework.generics import RetrieveUpdateAPIView, ListAPIView
 from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly
+from rest_framework.views import APIView
 
 # Local imports
-from .models import UserProfile
+from ..models import UserProfile
 from .serializers import RegistrationSerializer, LoginSerializer, UserProfileSerializer
 
 class RegistrationView(APIView):
@@ -133,3 +134,29 @@ class ProfileView(RetrieveUpdateAPIView):
             raise PermissionDenied("You can only update your own profile")
             
         return profile
+
+
+class BusinessProfileListView(APIView):
+    """
+    List business user profiles without pagination.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def get(self, request):
+        """Get list of business profiles as array."""
+        queryset = UserProfile.objects.select_related('user').filter(type='business')
+        serializer = UserProfileSerializer(queryset, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class CustomerProfileListView(APIView):
+    """
+    List customer user profiles without pagination.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def get(self, request):
+        """Get list of customer profiles as array."""
+        queryset = UserProfile.objects.select_related('user').filter(type='customer')
+        serializer = UserProfileSerializer(queryset, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
