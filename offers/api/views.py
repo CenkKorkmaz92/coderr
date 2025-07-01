@@ -15,11 +15,30 @@ class OfferListCreateView(generics.ListCreateAPIView):
     """
     queryset = Offer.objects.all().prefetch_related('details')
     serializer_class = OfferSerializer
-    permission_classes = [permissions.AllowAny]  
+    permission_classes = [permissions.AllowAny]
     filter_backends = [filters.SearchFilter, filters.OrderingFilter, DjangoFilterBackend]
     search_fields = ['title', 'description']
-    ordering_fields = ['updated_at', 'created_at'] 
+    ordering_fields = ['updated_at', 'created_at']
     filterset_fields = ['user']
+
+    def list(self, request, *args, **kwargs):
+        """
+        Return a simple array of offers, not a paginated response.
+        Supports page_size parameter for limiting results.
+        """
+        queryset = self.filter_queryset(self.get_queryset())
+        
+        page_size = request.query_params.get('page_size')
+        if page_size:
+            try:
+                page_size = int(page_size)
+                if page_size > 0:
+                    queryset = queryset[:page_size]
+            except (ValueError, TypeError):
+                pass
+        
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
 
     def get_permissions(self):
         """
@@ -90,7 +109,7 @@ class OfferRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
     """
     queryset = Offer.objects.all().prefetch_related('details')
     serializer_class = OfferSerializer
-    permission_classes = [IsAuthenticated] 
+    permission_classes = [IsAuthenticated]
 
     def get_object(self):
         """
