@@ -37,7 +37,6 @@ class ReviewListCreateView(generics.ListCreateAPIView):
         reviewer = self.request.user
         business_user = serializer.validated_data['business_user']
         
-        # Check if reviewer has a profile
         try:
             reviewer_profile = reviewer.profile
         except AttributeError:
