@@ -15,7 +15,7 @@ class BaseInfoView(APIView):
     Provides aggregate information about the platform including
     review counts, average ratings, business profiles, and offers.
     """
-    permission_classes = [permissions.AllowAny]  # No permissions required
+    permission_classes = [permissions.AllowAny] 
     
     def get(self, request):
         """Get platform statistics for dashboard display."""
