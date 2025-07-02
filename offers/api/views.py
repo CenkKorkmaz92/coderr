@@ -51,14 +51,12 @@ class OfferListCreateView(generics.ListCreateAPIView):
         """
         Handle listing offers with custom page_size support.
         """
-        # Handle custom page_size parameter
         page_size = request.query_params.get('page_size')
         
         if page_size:
             try:
                 page_size = int(page_size)
                 
-                # Create custom paginator for this request
                 from rest_framework.pagination import PageNumberPagination
                 paginator = PageNumberPagination()
                 paginator.page_size = page_size
@@ -72,7 +70,6 @@ class OfferListCreateView(generics.ListCreateAPIView):
             except (ValueError, TypeError):
                 pass
         
-        # Use default pagination
         return super().list(request, *args, **kwargs)
 
     def get_permissions(self):
