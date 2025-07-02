@@ -139,6 +139,7 @@ class OrderCountView(APIView):
             from django.http import Http404
             raise Http404("Business user not found")
         
+        # Filter orders where the business_user is the provider, not the customer
         count = Order.objects.filter(business_user_id=business_user_id).count()
         return Response({'order_count': count})
 

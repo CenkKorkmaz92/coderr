@@ -11,15 +11,11 @@ class OfferDetailSerializer(serializers.ModelSerializer):
     
     Represents specific pricing tiers (basic, standard, premium) for offers.
     """
-    url = serializers.HyperlinkedIdentityField(
-        view_name='offerdetail-detail',
-        lookup_field='pk'
-    )
     
     class Meta:
         model = OfferDetail
         fields = [
-            'id', 'url', 'title', 'revisions', 'delivery_time_in_days', 'price', 'features', 'offer_type'
+            'id', 'title', 'revisions', 'delivery_time_in_days', 'price', 'features', 'offer_type'
         ]
         extra_kwargs = {
             'id': {'required': False, 'allow_null': True}

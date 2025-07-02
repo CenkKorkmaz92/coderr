@@ -146,6 +146,46 @@ class OfferRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
             
         return offer
 
+    def update(self, request, *args, **kwargs):
+        """
+        Handle PATCH/PUT with proper validation order: 400 -> 403 -> 404.
+        """
+        # First check validation (400)
+        if 'offer_type' in request.data and not request.data.get('offer_type'):
+            from rest_framework.exceptions import ValidationError
+            raise ValidationError({'offer_type': 'This field is required.'})
+            
+        # Then check if object exists and user has permission
+        try:
+            offer = Offer.objects.get(pk=self.kwargs['pk'])
+            # Check permission (403) 
+            if offer.user != request.user:
+                from rest_framework.exceptions import PermissionDenied
+                raise PermissionDenied("You can only modify your own offers")
+        except Offer.DoesNotExist:
+            # Object not found (404)
+            from django.http import Http404
+            raise Http404("Offer not found")
+            
+        return super().update(request, *args, **kwargs)
+
+    def destroy(self, request, *args, **kwargs):
+        """
+        Handle DELETE with proper permission order: 403 -> 404.
+        """
+        try:
+            offer = Offer.objects.get(pk=self.kwargs['pk'])
+            # Check permission (403)
+            if offer.user != request.user:
+                from rest_framework.exceptions import PermissionDenied
+                raise PermissionDenied("You can only modify your own offers")
+        except Offer.DoesNotExist:
+            # Object not found (404)
+            from django.http import Http404
+            raise Http404("Offer not found")
+            
+        return super().destroy(request, *args, **kwargs)
+
     def perform_update(self, serializer):
         """
         Save the updated offer with the current user as the owner.
