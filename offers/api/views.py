@@ -20,18 +20,60 @@ class OfferListCreateView(generics.ListCreateAPIView):
     search_fields = ['title', 'description']
     ordering_fields = ['updated_at', 'created_at']
     filterset_fields = ['user']
-    
-    def get_paginate_by(self, queryset):
+
+    def get_queryset(self):
         """
-        Return the size of pages to use with this view, handling page_size parameter.
+        Filter offers based on min_price and max_delivery_time query parameters.
         """
-        page_size = self.request.query_params.get('page_size')
+        queryset = super().get_queryset()
+        
+        min_price = self.request.query_params.get('min_price')
+        if min_price:
+            try:
+                min_price = float(min_price)
+                queryset = queryset.filter(details__price__gte=min_price).distinct()
+            except (ValueError, TypeError):
+                from rest_framework.exceptions import ValidationError
+                raise ValidationError({'min_price': 'Must be a valid number'})
+        
+        max_delivery_time = self.request.query_params.get('max_delivery_time')
+        if max_delivery_time:
+            try:
+                max_delivery_time = int(max_delivery_time)
+                queryset = queryset.filter(details__delivery_time_in_days__lte=max_delivery_time).distinct()
+            except (ValueError, TypeError):
+                from rest_framework.exceptions import ValidationError
+                raise ValidationError({'max_delivery_time': 'Must be a valid integer'})
+        
+        return queryset
+
+    def list(self, request, *args, **kwargs):
+        """
+        Handle listing offers with custom page_size support.
+        """
+        # Handle custom page_size parameter
+        page_size = request.query_params.get('page_size')
+        
         if page_size:
             try:
-                return int(page_size)
+                page_size = int(page_size)
+                
+                # Create custom paginator for this request
+                from rest_framework.pagination import PageNumberPagination
+                paginator = PageNumberPagination()
+                paginator.page_size = page_size
+                
+                queryset = self.filter_queryset(self.get_queryset())
+                page = paginator.paginate_queryset(queryset, request, view=self)
+                
+                if page is not None:
+                    serializer = self.get_serializer(page, many=True)
+                    return paginator.get_paginated_response(serializer.data)
             except (ValueError, TypeError):
                 pass
-        return self.paginate_by
+        
+        # Use default pagination
+        return super().list(request, *args, **kwargs)
 
     def get_permissions(self):
         """
@@ -70,39 +112,20 @@ class OfferListCreateView(generics.ListCreateAPIView):
             raise PermissionDenied('Only business users can create offers.')
         serializer.save(user=self.request.user)
 
-    def get_queryset(self):
-        """
-        Filter offers based on min_price and max_delivery_time query parameters.
-        """
-        queryset = super().get_queryset()
-        
-        min_price = self.request.query_params.get('min_price')
-        if min_price:
-            try:
-                min_price = float(min_price)
-                queryset = queryset.filter(details__price__gte=min_price).distinct()
-            except (ValueError, TypeError):
-                from rest_framework.exceptions import ValidationError
-                raise ValidationError({'min_price': 'Must be a valid number'})
-        
-        max_delivery_time = self.request.query_params.get('max_delivery_time')
-        if max_delivery_time:
-            try:
-                max_delivery_time = int(max_delivery_time)
-                queryset = queryset.filter(details__delivery_time_in_days__lte=max_delivery_time).distinct()
-            except (ValueError, TypeError):
-                from rest_framework.exceptions import ValidationError
-                raise ValidationError({'max_delivery_time': 'Must be a valid integer'})
-        
-        return queryset
-
 class OfferRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
     """
     Handle retrieving, updating, and deleting individual offers.
     """
     queryset = Offer.objects.all().prefetch_related('details')
     serializer_class = OfferSerializer
-    permission_classes = [IsAuthenticated]
+    
+    def get_permissions(self):
+        """
+        Allow public access for GET requests, require authentication for POST/PATCH/DELETE.
+        """
+        if self.request.method == 'GET':
+            return [permissions.AllowAny()]
+        return [permissions.IsAuthenticated()]
 
     def get_object(self):
         """
@@ -145,7 +168,7 @@ class OfferDetailRetrieveView(generics.RetrieveAPIView):
     """
     queryset = OfferDetail.objects.all()
     serializer_class = OfferDetailSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.AllowAny]
 
 class OfferDetailListCreateView(generics.ListCreateAPIView):
     """
