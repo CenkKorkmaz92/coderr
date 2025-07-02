@@ -130,7 +130,6 @@ class OrderCountView(APIView):
         """Get order count for business user."""
         from django.contrib.auth.models import User
         
-        # Check if business_user exists and is a business user
         try:
             business_user = User.objects.get(id=business_user_id)
             if not hasattr(business_user, 'profile') or business_user.profile.type != 'business':
@@ -154,7 +153,6 @@ class CompletedOrderCountView(APIView):
         """Get completed order count for business user."""
         from django.contrib.auth.models import User
         
-        # Check if business_user exists and is a business user
         try:
             business_user = User.objects.get(id=business_user_id)
             if not hasattr(business_user, 'profile') or business_user.profile.type != 'business':

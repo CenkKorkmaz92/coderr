@@ -114,7 +114,6 @@ class ReviewRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
         if request.user != review.reviewer:
             return Response({'detail': 'Only the reviewer can update this review.'}, status=status.HTTP_403_FORBIDDEN)
         
-        # Use the generic partial_update method which handles serialization properly
         return super().partial_update(request, *args, **kwargs)
 
     def delete(self, request, *args, **kwargs):
