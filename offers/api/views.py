@@ -1,7 +1,5 @@
 """Views for offer management including CRUD operations and filtering."""
-from django.shortcuts import render
-from django.db.models import Min
-from rest_framework import generics, permissions, status, filters
+from rest_framework import generics, permissions, filters
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticatedOrReadOnly, IsAuthenticated
 from django_filters.rest_framework import DjangoFilterBackend
@@ -118,15 +116,14 @@ class OfferRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
     
     def get_permissions(self):
         """
-        Allow public access for GET requests, require authentication for POST/PATCH/DELETE.
+        Require authentication for all requests.
         """
-        if self.request.method == 'GET':
-            return [permissions.AllowAny()]
         return [permissions.IsAuthenticated()]
 
     def get_object(self):
         """
-        Get offer with proper permission checks for updates/deletes.
+        Get offer with proper permission checks.
+        Authentication is checked first by DRF, then we check if object exists.
         
         Returns:
             Offer instance
@@ -141,12 +138,11 @@ class OfferRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
             from django.http import Http404
             raise Http404("Offer not found")
         
-        if self.request.method == 'GET':
-            return offer
-            
-        if offer.user != self.request.user:
-            from rest_framework.exceptions import PermissionDenied
-            raise PermissionDenied("You can only modify your own offers")
+        # Only check ownership for modification methods
+        if self.request.method in ['PATCH', 'PUT', 'DELETE']:
+            if offer.user != self.request.user:
+                from rest_framework.exceptions import PermissionDenied
+                raise PermissionDenied("You can only modify your own offers")
             
         return offer
 
@@ -165,7 +161,25 @@ class OfferDetailRetrieveView(generics.RetrieveAPIView):
     """
     queryset = OfferDetail.objects.all()
     serializer_class = OfferDetailSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def get_object(self):
+        """
+        Get offer detail with proper authentication check first, then 404.
+        
+        Returns:
+            OfferDetail instance
+            
+        Raises:
+            Http404: If offer detail doesn't exist
+        """
+        try:
+            offer_detail = OfferDetail.objects.get(pk=self.kwargs['pk'])
+        except OfferDetail.DoesNotExist:
+            from django.http import Http404
+            raise Http404("Offer detail not found")
+        
+        return offer_detail
 
 class OfferDetailListCreateView(generics.ListCreateAPIView):
     """

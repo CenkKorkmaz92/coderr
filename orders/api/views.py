@@ -1,6 +1,6 @@
 """Views for order management."""
 
-from rest_framework import generics, permissions, status
+from rest_framework import generics, permissions
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
@@ -140,7 +140,7 @@ class OrderCountView(APIView):
             raise Http404("Business user not found")
         
         count = Order.objects.filter(business_user_id=business_user_id).count()
-        return Response({'count': count})
+        return Response({'order_count': count})
 
 
 class CompletedOrderCountView(APIView):
@@ -166,4 +166,4 @@ class CompletedOrderCountView(APIView):
             business_user_id=business_user_id, 
             status='completed'
         ).count()
-        return Response({'count': count})
+        return Response({'completed_order_count': count})
