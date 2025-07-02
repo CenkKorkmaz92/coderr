@@ -20,6 +20,18 @@ class OfferListCreateView(generics.ListCreateAPIView):
     search_fields = ['title', 'description']
     ordering_fields = ['updated_at', 'created_at']
     filterset_fields = ['user']
+    
+    def get_paginate_by(self, queryset):
+        """
+        Return the size of pages to use with this view, handling page_size parameter.
+        """
+        page_size = self.request.query_params.get('page_size')
+        if page_size:
+            try:
+                return int(page_size)
+            except (ValueError, TypeError):
+                pass
+        return self.paginate_by
 
     def get_permissions(self):
         """

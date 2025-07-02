@@ -22,9 +22,21 @@ class OrderListCreateView(generics.ListCreateAPIView):
 
     def get_queryset(self):
         """
-        Return orders for the authenticated user as customer.
+        Return orders for the authenticated user.
+        - Customer users see orders where they are the customer
+        - Business users see orders where they are the business provider
         """
-        return Order.objects.filter(customer_user=self.request.user).order_by('-created_at')
+        user = self.request.user
+        try:
+            user_profile = user.profile
+            if user_profile.type == 'customer':
+                return Order.objects.filter(customer_user=user).order_by('-created_at')
+            elif user_profile.type == 'business':
+                return Order.objects.filter(business_user=user).order_by('-created_at')
+            else:
+                return Order.objects.none()
+        except AttributeError:
+            return Order.objects.none()
 
     def list(self, request, *args, **kwargs):
         """
@@ -75,9 +87,37 @@ class OrderRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
 
     def get_queryset(self):
         """
-        Return orders for the authenticated user as customer.
+        Return orders for the authenticated user.
+        - Customer users can access orders where they are the customer
+        - Business users can access orders where they are the business provider
         """
-        return Order.objects.filter(customer_user=self.request.user)
+        user = self.request.user
+        try:
+            user_profile = user.profile
+            if user_profile.type == 'customer':
+                return Order.objects.filter(customer_user=user)
+            elif user_profile.type == 'business':
+                return Order.objects.filter(business_user=user)
+            else:
+                return Order.objects.none()
+        except AttributeError:
+            return Order.objects.none()
+    
+    def perform_update(self, serializer):
+        """
+        Only allow business users to update orders (not customers).
+        """
+        user = self.request.user
+        try:
+            user_profile = user.profile
+            if user_profile.type != 'business':
+                from rest_framework.exceptions import PermissionDenied
+                raise PermissionDenied('Only business users can update orders.')
+        except AttributeError:
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied('User profile not found.')
+        
+        serializer.save()
 
 
 class OrderCountView(APIView):
@@ -88,6 +128,18 @@ class OrderCountView(APIView):
     
     def get(self, request, business_user_id):
         """Get order count for business user."""
+        from django.contrib.auth.models import User
+        
+        # Check if business_user exists and is a business user
+        try:
+            business_user = User.objects.get(id=business_user_id)
+            if not hasattr(business_user, 'profile') or business_user.profile.type != 'business':
+                from django.http import Http404
+                raise Http404("Business user not found")
+        except User.DoesNotExist:
+            from django.http import Http404
+            raise Http404("Business user not found")
+        
         count = Order.objects.filter(business_user_id=business_user_id).count()
         return Response({'count': count})
 
@@ -100,6 +152,18 @@ class CompletedOrderCountView(APIView):
     
     def get(self, request, business_user_id):
         """Get completed order count for business user."""
+        from django.contrib.auth.models import User
+        
+        # Check if business_user exists and is a business user
+        try:
+            business_user = User.objects.get(id=business_user_id)
+            if not hasattr(business_user, 'profile') or business_user.profile.type != 'business':
+                from django.http import Http404
+                raise Http404("Business user not found")
+        except User.DoesNotExist:
+            from django.http import Http404
+            raise Http404("Business user not found")
+        
         count = Order.objects.filter(
             business_user_id=business_user_id, 
             status='completed'

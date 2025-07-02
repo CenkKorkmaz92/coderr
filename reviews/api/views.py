@@ -96,16 +96,26 @@ class ReviewRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
             Review instance
             
         Raises:
-            Review.DoesNotExist: If review doesn't exist
+            Http404: If review doesn't exist
         """
-        return Review.objects.get(pk=self.kwargs['pk'])
+        try:
+            return Review.objects.get(pk=self.kwargs['pk'])
+        except Review.DoesNotExist:
+            from django.http import Http404
+            raise Http404("Review not found")
 
     def patch(self, request, *args, **kwargs):
         """Update review - only allowed for the original reviewer."""
-        review = self.get_object()
+        try:
+            review = self.get_object()
+        except:
+            return Response({'detail': 'Review not found'}, status=status.HTTP_404_NOT_FOUND)
+            
         if request.user != review.reviewer:
             return Response({'detail': 'Only the reviewer can update this review.'}, status=status.HTTP_403_FORBIDDEN)
-        return self.partial_update(request, *args, **kwargs)
+        
+        # Use the generic partial_update method which handles serialization properly
+        return super().partial_update(request, *args, **kwargs)
 
     def delete(self, request, *args, **kwargs):
         """Delete review - only allowed for the original reviewer."""
