@@ -113,11 +113,12 @@ class OfferRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
     """
     queryset = Offer.objects.all().prefetch_related('details')
     serializer_class = OfferSerializer
-    permission_classes = [permissions.AllowAny]  # We handle permissions manually
+    permission_classes = [permissions.IsAuthenticated]  # Require auth for all operations
     
     def get_object(self):
         """
-        Get offer for GET requests only. For PATCH/DELETE, we handle in the methods directly.
+        Get offer for GET requests with proper error order: 401 -> 404
+        For PATCH/DELETE, we handle in the methods directly.
         
         Returns:
             Offer instance
@@ -126,6 +127,8 @@ class OfferRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
             Http404: If offer doesn't exist
         """
         if self.request.method == 'GET':
+            # Authentication is handled by DRF permission_classes
+            # If we get here, user is authenticated
             try:
                 offer = Offer.objects.prefetch_related('details').get(pk=self.kwargs['pk'])
             except Offer.DoesNotExist:
@@ -133,9 +136,8 @@ class OfferRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
                 raise Http404("Offer not found")
             return offer
         
-        # For PATCH/PUT/DELETE, return a dummy object to prevent automatic 404
-        # We handle object retrieval manually in the update/destroy methods
-        # This prevents DRF from calling get_object() and raising 404 before our custom logic
+        # For PATCH/PUT/DELETE, return a dummy object to prevent DRF from automatically
+        # checking existence. Our custom update/destroy methods handle the logic properly.
         from django.contrib.auth.models import User
         dummy_user = User(id=999999, username='dummy')
         return Offer(id=999999, user=dummy_user, title='dummy', description='dummy')
@@ -162,20 +164,18 @@ class OfferRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
                 status=status.HTTP_401_UNAUTHORIZED
             )
         
-        # For security reasons, always check permissions first to prevent information leakage
-        # about resource existence to unauthorized users
+        # Get the offer and handle 403/404 properly
         try:
             offer = Offer.objects.get(pk=self.kwargs['pk'])
-            # If offer exists but user doesn't own it, return 403
-            if offer.user != request.user:
-                return Response(
-                    {'detail': 'You can only modify your own offers'}, 
-                    status=status.HTTP_403_FORBIDDEN
-                )
         except Offer.DoesNotExist:
-            # Even for non-existent offers, return 403 to prevent information leakage
-            # This follows security best practices: unauthorized users should not know
-            # whether a resource exists or not
+            # Standard REST: if resource doesn't exist, return 404
+            return Response(
+                {'detail': 'Offer not found'}, 
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        # Check permission (only if offer exists)
+        if offer.user != request.user:
             return Response(
                 {'detail': 'You can only modify your own offers'}, 
                 status=status.HTTP_403_FORBIDDEN
@@ -206,15 +206,15 @@ class OfferRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
         
         try:
             offer = Offer.objects.get(pk=self.kwargs['pk'])
-            # Check permission
-            if offer.user != request.user:
-                return Response(
-                    {'detail': 'You can only modify your own offers'}, 
-                    status=status.HTTP_403_FORBIDDEN
-                )
         except Offer.DoesNotExist:
-            # For security reasons, return 403 if user doesn't have permission to know if resource exists
-            # This prevents information leakage about resource existence to unauthorized users
+            # Standard REST: if resource doesn't exist, return 404
+            return Response(
+                {'detail': 'Offer not found'}, 
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        # Check permission (only if offer exists)
+        if offer.user != request.user:
             return Response(
                 {'detail': 'You can only modify your own offers'}, 
                 status=status.HTTP_403_FORBIDDEN
