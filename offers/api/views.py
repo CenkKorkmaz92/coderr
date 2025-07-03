@@ -113,15 +113,8 @@ class OfferRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
     """
     queryset = Offer.objects.all().prefetch_related('details')
     serializer_class = OfferSerializer
+    permission_classes = [permissions.AllowAny]  # We handle permissions manually
     
-    def get_permissions(self):
-        """
-        For PATCH/PUT/DELETE, allow validation to run before authentication check.
-        """
-        if self.request.method in ['PATCH', 'PUT', 'DELETE']:
-            return [permissions.AllowAny()]
-        return [permissions.IsAuthenticated()]
-
     def get_object(self):
         """
         Get offer for GET requests only. For PATCH/DELETE, we handle in the methods directly.
@@ -140,7 +133,12 @@ class OfferRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
                 raise Http404("Offer not found")
             return offer
         
-        return Offer()
+        # For PATCH/PUT/DELETE, return a dummy object to prevent automatic 404
+        # We handle object retrieval manually in the update/destroy methods
+        # This prevents DRF from calling get_object() and raising 404 before our custom logic
+        from django.contrib.auth.models import User
+        dummy_user = User(id=999999, username='dummy')
+        return Offer(id=999999, user=dummy_user, title='dummy', description='dummy')
 
     def update(self, request, *args, **kwargs):
         """
@@ -148,6 +146,7 @@ class OfferRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
         """
         from rest_framework import status
         
+        # First do basic validation that doesn't require the offer instance
         details = request.data.get('details', [])
         for detail in details:
             if 'offer_type' in detail and not detail.get('offer_type'):
@@ -156,25 +155,33 @@ class OfferRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
                     status=status.HTTP_400_BAD_REQUEST
                 )
         
+        # Check authentication
         if not request.user.is_authenticated:
             return Response(
                 {'detail': 'Authentication credentials were not provided.'}, 
                 status=status.HTTP_401_UNAUTHORIZED
             )
         
+        # For security reasons, always check permissions first to prevent information leakage
+        # about resource existence to unauthorized users
         try:
             offer = Offer.objects.get(pk=self.kwargs['pk'])
+            # If offer exists but user doesn't own it, return 403
             if offer.user != request.user:
                 return Response(
                     {'detail': 'You can only modify your own offers'}, 
                     status=status.HTTP_403_FORBIDDEN
                 )
         except Offer.DoesNotExist:
+            # Even for non-existent offers, return 403 to prevent information leakage
+            # This follows security best practices: unauthorized users should not know
+            # whether a resource exists or not
             return Response(
-                {'detail': 'Offer not found'}, 
-                status=status.HTTP_404_NOT_FOUND
+                {'detail': 'You can only modify your own offers'}, 
+                status=status.HTTP_403_FORBIDDEN
             )
         
+        # Now do full validation with serializer (this will catch other validation errors)
         serializer = self.get_serializer(offer, data=request.data, partial=True)
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -199,15 +206,18 @@ class OfferRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
         
         try:
             offer = Offer.objects.get(pk=self.kwargs['pk'])
+            # Check permission
             if offer.user != request.user:
                 return Response(
                     {'detail': 'You can only modify your own offers'}, 
                     status=status.HTTP_403_FORBIDDEN
                 )
         except Offer.DoesNotExist:
+            # For security reasons, return 403 if user doesn't have permission to know if resource exists
+            # This prevents information leakage about resource existence to unauthorized users
             return Response(
-                {'detail': 'Offer not found'}, 
-                status=status.HTTP_404_NOT_FOUND
+                {'detail': 'You can only modify your own offers'}, 
+                status=status.HTTP_403_FORBIDDEN
             )
         
         offer.delete()
