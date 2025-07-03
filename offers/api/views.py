@@ -116,75 +116,112 @@ class OfferRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
     
     def get_permissions(self):
         """
-        Require authentication for all requests.
+        For PATCH/PUT/DELETE, allow validation to run before authentication check.
         """
+        if self.request.method in ['PATCH', 'PUT', 'DELETE']:
+            return [permissions.AllowAny()]
         return [permissions.IsAuthenticated()]
 
     def get_object(self):
         """
-        Get offer with proper permission checks.
-        Authentication is checked first by DRF, then we check if object exists.
+        Get offer for GET requests only. For PATCH/DELETE, we handle in the methods directly.
         
         Returns:
             Offer instance
             
         Raises:
             Http404: If offer doesn't exist
-            PermissionDenied: If user doesn't own the offer (for updates/deletes)
         """
-        try:
-            offer = Offer.objects.prefetch_related('details').get(pk=self.kwargs['pk'])
-        except Offer.DoesNotExist:
-            from django.http import Http404
-            raise Http404("Offer not found")
+        if self.request.method == 'GET':
+            try:
+                offer = Offer.objects.prefetch_related('details').get(pk=self.kwargs['pk'])
+            except Offer.DoesNotExist:
+                from django.http import Http404
+                raise Http404("Offer not found")
+            return offer
         
-        # Only check ownership for modification methods
-        if self.request.method in ['PATCH', 'PUT', 'DELETE']:
-            if offer.user != self.request.user:
-                from rest_framework.exceptions import PermissionDenied
-                raise PermissionDenied("You can only modify your own offers")
-            
-        return offer
+        return Offer()
 
     def update(self, request, *args, **kwargs):
         """
-        Handle PATCH/PUT with proper validation order: 400 -> 403 -> 404.
+        Handle PATCH/PUT with proper status code order: 400 -> 401 -> 403 -> 404
         """
-        # First check validation (400)
-        if 'offer_type' in request.data and not request.data.get('offer_type'):
-            from rest_framework.exceptions import ValidationError
-            raise ValidationError({'offer_type': 'This field is required.'})
-            
-        # Then check if object exists and user has permission
+        from rest_framework import status
+        
+        # 400 - Validation FIRST (before authentication check)
+        details = request.data.get('details', [])
+        for detail in details:
+            if 'offer_type' in detail and not detail.get('offer_type'):
+                return Response(
+                    {'details': 'offer_type is required for each detail'}, 
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+        
+        # 401 - Authentication check
+        if not request.user.is_authenticated:
+            return Response(
+                {'detail': 'Authentication credentials were not provided.'}, 
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+        
+        # 403 & 404 - Get object to check permission and existence
         try:
             offer = Offer.objects.get(pk=self.kwargs['pk'])
-            # Check permission (403) 
             if offer.user != request.user:
-                from rest_framework.exceptions import PermissionDenied
-                raise PermissionDenied("You can only modify your own offers")
+                return Response(
+                    {'detail': 'You can only modify your own offers'}, 
+                    status=status.HTTP_403_FORBIDDEN
+                )
         except Offer.DoesNotExist:
-            # Object not found (404)
-            from django.http import Http404
-            raise Http404("Offer not found")
-            
-        return super().update(request, *args, **kwargs)
+            # 404 - Object not found (only after validation and permission)
+            return Response(
+                {'detail': 'Offer not found'}, 
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        # Now do proper serializer validation with the existing instance
+        serializer = self.get_serializer(offer, data=request.data, partial=True)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Do the actual update and return ALL details
+        self.perform_update(serializer)
+        
+        # Refresh from DB to get all details
+        offer.refresh_from_db()
+        response_serializer = self.get_serializer(offer)
+        return Response(response_serializer.data)
 
     def destroy(self, request, *args, **kwargs):
         """
-        Handle DELETE with proper permission order: 403 -> 404.
+        Handle DELETE with proper status code order: 401 -> 403 -> 404
         """
+        from rest_framework import status
+        
+        # 401 - Authentication check
+        if not request.user.is_authenticated:
+            return Response(
+                {'detail': 'Authentication credentials were not provided.'}, 
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+        
+        # 403 - Permission check BEFORE 404
         try:
             offer = Offer.objects.get(pk=self.kwargs['pk'])
-            # Check permission (403)
             if offer.user != request.user:
-                from rest_framework.exceptions import PermissionDenied
-                raise PermissionDenied("You can only modify your own offers")
+                return Response(
+                    {'detail': 'You can only modify your own offers'}, 
+                    status=status.HTTP_403_FORBIDDEN
+                )
         except Offer.DoesNotExist:
-            # Object not found (404)
-            from django.http import Http404
-            raise Http404("Offer not found")
-            
-        return super().destroy(request, *args, **kwargs)
+            # 404 - Object not found (only after permission)
+            return Response(
+                {'detail': 'Offer not found'}, 
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        offer.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
     def perform_update(self, serializer):
         """

@@ -140,7 +140,8 @@ class OrderCountView(APIView):
             raise Http404("Business user not found")
         
         # Filter orders where the business_user is the provider, not the customer
-        count = Order.objects.filter(business_user_id=business_user_id).count()
+        # Only count orders with status 'in_progress' as per API documentation
+        count = Order.objects.filter(business_user_id=business_user_id, status='in_progress').count()
         return Response({'order_count': count})
 
 
